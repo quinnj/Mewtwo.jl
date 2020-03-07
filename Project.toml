@@ -1,0 +1,4 @@
+name = "Mewtwo"
+uuid = "3e3c71b6-77a2-42d9-8047-daca17e46eba"
+authors = ["Jacob Quinn <quinn.jacobd@gmail.com>"]
+version = "0.1.0"
