@@ -127,7 +127,7 @@ function resolvePick!(game, pick)
     elseif cardType == Model.RescueStretcher
         game.nextExpectedAction = Model.RescueDiscarded
     elseif cardType == Model.Switch
-
+        #TODO
     elseif cardType == Model.SuperScoopUp
         game.nextExpectedAction = Model.ScoopOldCard
     elseif cardType == Model.OldRodForFun
