@@ -1,6 +1,6 @@
 module Resource
 
-using HTTP, JSON3
+using Sockets, HTTP, JSON3
 using ..Model, ..Service
 
 const ROUTER = HTTP.Router()
@@ -41,6 +41,14 @@ GET to `/mewtwo/game/{gameId}/hand/{playerId}`
 """
 getRoleAndHand(req) = Service.getRoleAndHand(HTTP.URIs.splitpath(req.target)[3], HTTP.URIs.splitpath(req.target)[5])
 HTTP.@register(ROUTER, "GET", "/mewtwo/game/*/hand/*", getRoleAndHand)
+
+"""
+    getDiscard
+
+GET to `/mewtwo/game/{gameId}/discard`
+"""
+getDiscard(req) = Service.getDiscard(HTTP.URIs.splitpath(req.target)[3])
+HTTP.@register(ROUTER, "GET", "/mewtwo/game/*", getDiscard)
 
 """
     takeAction
@@ -87,12 +95,27 @@ function requestHandler(req)
 end
 
 function broadcast(json)
-    # TODO: for all open client websockets, publish updated game
+    # for all open client websockets, publish updated game
+    for ch in BROADCAST_CHANNELS
+        put!(ch, json)
+    end
     return
 end
 
+const BROADCAST_CHANNELS = Channel{String}[]
+
 function run()
-    # TODO: start websocket server asynchronously
+    @async HTTP.listen(IPv4(0, 0, 0, 0), 8080) do http
+        if HTTP.WebSockets.is_upgrade(http.message)
+            HTTP.WebSockets.upgrade(http) do ws
+                ch = Channel{String}(1)
+                push!(BROADCAST_CHANNELS, ch)
+                while !eof(ws)
+                    write(ws, take!(ch))
+                end
+            end
+        end
+    end
     HTTP.serve(requestHandler, IPv4(0, 0, 0, 0), 8081)
 end
 

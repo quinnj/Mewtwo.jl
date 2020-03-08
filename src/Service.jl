@@ -208,4 +208,9 @@ function getRoleAndHand(gameId, playerId)
     return (hand=[x.cardType for x in hand], role=game.roles[playerId])
 end
 
+function getDiscard(gameId)
+    game = Mapper.getGame(gameId)
+    return (discard=[x.cardType for x in game.discard],)
+end
+
 end # module

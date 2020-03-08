@@ -112,7 +112,7 @@ StructTypes.excludes(::Type{Game}) = (:roles, :outRole)
 function copy(game::Game)
     g = Game()
     for f in fieldnames(Game)
-        if f != :privateActionResultion
+        if f != :privateActionResolution
             setfield!(g, f, getfield(game, f))
         end
     end
