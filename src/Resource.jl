@@ -5,36 +5,82 @@ using ..Model, ..Service
 
 const ROUTER = HTTP.Router()
 
-listPlayers(req) = Service.listPlayers()
-HTTP.@register(ROUTER, "GET", "/mewtwo/player", listPlayers)
+"""
+    createNewGame
 
-createPlayer(req) = Service.createPlayer(JSON3.read(req.body))
-HTTP.@register(ROUTER, "POST", "/mewtwo/player", createPlayer)
-
+POST to `/mewtwo`, body like:
+```
+{
+    numPlayers: 5
+}
+```
+"""
 createNewGame(req) = Service.createNewGame(JSON3.read(req.body))
 HTTP.@register(ROUTER, "POST", "/mewtwo", createNewGame)
 
+"""
+    joinGame
+
+POST to `/mewtwo/game/{gameId}`, body like:
+```
+{
+    playerId: 1,
+    name: "ahindes5"
+}
+```
+`playerId` corresponds to the "seat" around the table
+and user should be allowed to choose any empty seat.
+"""
 joinGame(req) = Service.joinGame(HTTP.URIs.splitpath(req.target)[3], JSON3.read(req.body))
 HTTP.@register(ROUTER, "POST", "/mewtwo/game/*", joinGame)
 
-getHand(req) = Service.getHand(HTTP.URIs.splitpath(req.target)[3], JSON3.read(req.body))
-HTTP.@register(ROUTER, "GET", "/mewtwo/game/*/hand", getHand)
+"""
+    getRoleAndHand
 
+GET to `/mewtwo/game/{gameId}/hand/{playerId}`
+"""
+getRoleAndHand(req) = Service.getRoleAndHand(HTTP.URIs.splitpath(req.target)[3], HTTP.URIs.splitpath(req.target)[5])
+HTTP.@register(ROUTER, "GET", "/mewtwo/game/*/hand/*", getRoleAndHand)
+
+"""
+    takeAction
+
+POST to `/mewtwo/game/{gameId}/action/{Action}`, body requirements depend on `Action`:
+
+* `PickACard`:
+    * Body required: `{pickingPlayerId: number, pickedPlayerId: number, cardNumberPicked: number}`
+* `WarpPointSteal`:
+    * Body required: `{pickedPlayerId: number, cardNumberPicked: number}`
+    * Returns: `game.privateActionResolution` has the `CardType` the player stole
+* `PubliclyPeek`:
+    * Body required: `{pickedPlayerId: number, cardNumberPicked: number}`
+    * Returns: `game.publicActionResolution` has the `CardType` the player peeked at
+* `EscapeACard`:
+    * Body required: `{cardNumberPicked: number}`, card number of player's own hand
+* `RescueDiscarded`:
+    * Body required: `{cardNumberPicked: number}`, card number of `game.discard`
+* `ScoopOldCard`:
+    * Body required: `{pickNumber: number}`, index (1-based) of pick in `game.picks` that should be scooped
+* `EnergySearchSomeone`:
+    * Body required: `{pickedPlayerId: number}`
+    * Returns: `game.privateActionResolution` has the `Role` of the player id
+"""
 function takeAction(req)
     path = HTTP.URIs.splitpath(req.target)
-    return Service.takeAction(path[3], path[5], JSON3.read(req.body))
+    return Service.takeAction(path[3], JSON3.read(string('"', path[5], '"'), Model.CardType), JSON3.read(req.body))
 end
 HTTP.@register(ROUTER, "POST", "/mewtwo/game/*/action/*", takeAction)
 
 function requestHandler(req)
     try
         ret = HTTP.handle(ROUTER, req)
-        json = JSON3.write(ret)
         if ret isa Model.Game
             # broadcast updated game to all clients
-            broadcast(json)
+            # make a copy that doesn't
+            # broadcast privateActionResolution
+            broadcast(JSON3.write(copy(ret)))
         end
-        return HTTP.Response(200, json)
+        return HTTP.Response(200, JSON3.write(ret))
     catch e
         return HTTP.Response(500, sprint(showerror, e))
     end

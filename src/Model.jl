@@ -7,7 +7,6 @@ using StructTypes
     CrazyBernie
     GrassEnergy
     WaterEnergy
-    SocialistEnergy
     FairyEnergy
     Pikachu
     Mewtwo
@@ -24,19 +23,20 @@ using StructTypes
     DualBall
     DetectivePikachu
     EnergySearch
+    MrMime
 end
 
-const Energies = [FireEnergy, CrazyBernie, GrassEnergy, FairyEnergy, WaterEnergy, SocialistEnergy]
-const StartingForFive = [FireEnergy, CrazyBernie, GrassEnergy, FairyEnergy, WaterEnergy, SocialistEnergy, Pikachu, Pikachu, Pikachu, Pikachu, Pikachu, Mewtwo, WarpPoint, PeekingRedCard, Ghastly, EscapeRope, ReverseValley, RepeatBall, RescueStretcher, Switch, SuperScoopUp, OldRodForFun, DualBall, DetectivePikachu, EnergySearch]
+const Energies = [FireEnergy, CrazyBernie, GrassEnergy, FairyEnergy, WaterEnergy]
+const StartingForFive = [FireEnergy, CrazyBernie, GrassEnergy, FairyEnergy, WaterEnergy, MrMime, Pikachu, Pikachu, Pikachu, Pikachu, Pikachu, Mewtwo, WarpPoint, PeekingRedCard, Ghastly, EscapeRope, ReverseValley, RepeatBall, RescueStretcher, Switch, SuperScoopUp, OldRodForFun, DualBall, DetectivePikachu, EnergySearch]
 
 mutable struct Card
     cardType::CardType
     sidewaysForNew::Bool
-    cardNumber::Int
     # cardImage
 end
 Card() = Card(GrassEnergy, false)
 StructTypes.StructType(::Type{Card}) = StructTypes.Mutable()
+StructTypes.excludes(::Type{Card}) = (:cardType,)
 
 @enum Role Good Bad
 
@@ -51,21 +51,22 @@ const Roles = Dict{Int, Vector{Role}}(
     12 => [Good, Good, Good, Good, Good, Good, Good, Good, Bad, Bad, Bad, Bad, Bad]
 )
 
-mutable struct Player
-    playerId::Int
+struct Player
     name::String
     # avatar
-    joined::Bool
-    seatingOrder::Int
-    # hidden
-    role::Role
-    hand::Vector{Card}
 end
-Player() = Player(0, "", false, 0, Good, Card[])
-StructTypes.StructType(::Type{Player}) = StructTypes.Mutable()
-StructTypes.excludes(::Type{Player}) = (:role, :hand)
+StructTypes.StructType(::Type{Player}) = StructTypes.Struct()
 
-@enum Action WaitingPlayers PickACard WarpPointSteal PubliclyPeek EscapeACard RescueDiscarded ScoopOldCard InspectRole InspectOutRole EnergySearchSomeone
+@enum Action begin
+    WaitingPlayers
+    PickACard
+    WarpPointSteal
+    PubliclyPeek
+    EscapeACard
+    RescueDiscarded
+    ScoopOldCard
+    EnergySearchSomeone
+end
 
 mutable struct Pick
     pickingPlayerId::Int
@@ -76,16 +77,8 @@ mutable struct Pick
     card::Card
 end
 Pick() = Pick(0, 0, 0, 0, Card())
-Pick(a, b, c, d) = Pick(a, b, c, d, Card())
+Pick(a, b, c) = Pick(a, b, c, 0, 0, Card())
 StructTypes.StructType(::Type{Pick}) = StructTypes.Mutable()
-
-struct DiscardedCard
-    originalPlayerId::Int
-    cardNumberDiscarded::Int
-    card::Card
-end
-
-StructTypes.StructType(::Type{DiscardedCard}) = StructTypes.Mutable()
 
 mutable struct Game
     # core fields
@@ -98,14 +91,32 @@ mutable struct Game
     finished::Bool
     # joined fields
     picks::Vector{Pick}
-    discard::Vector{DiscardedCard}
+    discard::Vector{Card}
+    hands::Vector{Vector{Card}} # length == numPlayers
+    # hidden fields
+    roles::Vector{Role} # length == numPlayers
+    outRole::Role
+    # temporary field (not persisted)
+    publicActionResolution::Any
+    # private for one user
+    privateActionResolution::Any
     # calculated fields
-    cardsPicked::Vector{Vector{Bool}}
     pikasFound::Int
     whoWon::Model.Role
     Game() = new()
 end
 
 StructTypes.StructType(::Type{Game}) = StructTypes.Mutable()
+StructTypes.excludes(::Type{Game}) = (:roles, :outRole)
+
+function copy(game::Game)
+    g = Game()
+    for f in fieldnames(Game)
+        if f != :privateActionResultion
+            setfield!(g, f, getfield(game, f))
+        end
+    end
+    return g
+end
 
 end # module

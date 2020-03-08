@@ -1,16 +1,16 @@
 module Mewtwo
 
-include("Mode.jl")
-using .Model
+include("Model.jl")
+using .Model; export Model
 
 include("Mapper.jl")
-using .Mapper
+using .Mapper; export Mapper
 
 include("Service.jl")
-using .Service
+using .Service; export Service
 
 include("Resource.jl")
-using .Resource
+using .Resource; export Resource
 
 function init()
     # Mapper.init()
