@@ -223,4 +223,14 @@ function getGame(gameId)
     return Mapper.getGame(gameId)
 end
 
+function init()
+    println("initializing Service")
+    # force compilation of key methods
+    game = createNewGame((numPlayers=5,))
+    joinGame(game.gameId, (playerId=1, name=""))
+    takeAction(game.gameId, Model.PickACard, (pickingPlayerId=1, pickedPlayerId=2, cardNumberPicked=1))
+    println("initialized Service")
+    return
+end
+
 end # module

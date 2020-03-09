@@ -1,6 +1,6 @@
 module Resource
 
-using Sockets, HTTP, JSON3
+using Sockets, HTTP, JSON3, Dates
 using ..Model, ..Service
 
 const ROUTER = HTTP.Router()
@@ -97,6 +97,8 @@ HTTP.@register(ROUTER, "POST", "/mewtwo/game/*/action/*", takeAction)
 
 function requestHandler(req)
     try
+        start = Dates.now(Dates.UTC)
+        println((now=start, event="ServiceRequestBegin", method=req.method, target=req.target))
         ret = HTTP.handle(ROUTER, req)
         if ret isa Model.Game
             # broadcast updated game to all clients
@@ -104,9 +106,14 @@ function requestHandler(req)
             # broadcast privateActionResolution
             broadcast(ret.gameId, JSON3.write(copy(ret)))
         end
-        return HTTP.Response(200, JSON3.write(ret))
+        stop = Dates.now(Dates.UTC)
+        resp = HTTP.Response(200, JSON3.write(ret))
+        println((now=stop, event="ServiceRequestEnd", method=req.method, target=req.target, duration=Dates.value(stop - start), status=resp.status, bodysize=length(resp.body)))
+        return resp
     catch e
-        return HTTP.Response(500, sprint(showerror, e, catch_backtrace()))
+        resp = HTTP.Response(500, sprint(showerror, e, catch_backtrace()))
+        println((now=stop, event="ServiceRequestEnd", method=req.method, target=req.target, duration=Dates.value(stop - start), status=resp.status, bodysize=length(resp.body)))
+        return resp
     end
 end
 
@@ -120,6 +127,15 @@ end
 
 const BROADCAST_CHANNELS = Dict{Int, Vector{Channel{String}}}()
 const WEBSOCKET_SERVER = Ref{Any}()
+
+function init()
+    println("initializing Resource")
+    # force compilation
+    req = HTTP.Request("GET", "/", [], JSON3.write((numPlayers=5,)))
+    createNewGame(req)
+    println("initialized Resource")
+    return
+end
 
 function run()
     WEBSOCKET_SERVER[] = @async HTTP.listen(IPv4(0, 0, 0, 0), 8082) do http

@@ -19,4 +19,12 @@ function updateGame(game)
     return
 end
 
+function init()
+    println("initializing Mapper")
+    GAME_ID[] = 0
+    empty!(GAMES)
+    println("initialized Mapper")
+    return
+end
+
 end # module
