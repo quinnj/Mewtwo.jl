@@ -1,5 +1,6 @@
 module Service
 
+using Random
 using ..Model, ..Mapper
 
 function generateDeckAndRoles(n)
@@ -211,7 +212,7 @@ end
 function getRoleAndHand(gameId, playerId)
     game = Mapper.getGame(gameId)
     hand = game.hands[playerId]
-    return (hand=[x.cardType for x in hand], role=game.roles[playerId])
+    return (hand=shuffle!([x.cardType for x in hand]), role=game.roles[playerId])
 end
 
 function getDiscard(gameId)
