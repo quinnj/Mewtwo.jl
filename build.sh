@@ -1,1 +1,1 @@
-docker build . -t mewtwo
+docker build . -t quinnj/mewtwo
