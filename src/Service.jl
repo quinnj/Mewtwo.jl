@@ -35,6 +35,11 @@ function createNewGame(params)
     return calculateFields!(Mapper.createNewGame(game))
 end
 
+function rematch(gameId)
+    game = Mapper.getGame(gameId)
+    return createNewGame((numPlayers=game.numPlayers,))
+end
+
 function joinGame(gameId, params)
     game = Mapper.getGame(gameId)
     game.players[params.playerId] = Model.Player(params.name)

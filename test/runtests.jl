@@ -271,7 +271,4 @@ game = Service.takeAction(game.gameId, Model.PickACard, body)
 @test length(game.picks) == 1
 @test game.privateActionResolution == Model.Bad
 
-# TODO
-  # test Resource.jl
-  # figure out websockets
-  
+Service.rematch(game.gameId)

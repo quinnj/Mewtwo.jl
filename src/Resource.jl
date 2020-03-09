@@ -19,6 +19,14 @@ createNewGame(req) = Service.createNewGame(JSON3.read(req.body))
 HTTP.@register(ROUTER, "POST", "/mewtwo", createNewGame)
 
 """
+    rematch
+
+POST to `/mewtwo/game/{gameId}/rematch`, no body required
+"""
+rematch(req) = Service.rematch(HTTP.URIs.splitpath(req.target)[3])
+HTTP.@register(ROUTER, "POST", "/mewtwo/game/*/rematch", rematch)
+
+"""
     joinGame
 
 POST to `/mewtwo/game/{gameId}`, body like:
