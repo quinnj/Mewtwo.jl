@@ -2,8 +2,10 @@ module Client
 
 using HTTP, JSON3, ..Model
 
-const SERVER = "http://localhost:8081" # mewtwo.bradr.dev:8081
-const WS = "ws://localhost:8082" # mewtwo.bradr.dev:8080
+# const SERVER = "http://localhost:8081"
+# const WS = "ws://localhost:8082"
+const SERVER = "http://mewtwo.bradr.dev:8081"
+const WS = "ws://mewtwo.bradr.dev:8082"
 
 function websocket(gameId)
     @async HTTP.WebSockets.open(WS) do ws
