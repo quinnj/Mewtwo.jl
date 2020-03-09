@@ -102,7 +102,7 @@ function requestHandler(req)
             # broadcast updated game to all clients
             # make a copy that doesn't
             # broadcast privateActionResolution
-            broadcast(JSON3.write(copy(ret)))
+            broadcast(ret.gameId, JSON3.write(copy(ret)))
         end
         return HTTP.Response(200, JSON3.write(ret))
     catch e
@@ -110,25 +110,28 @@ function requestHandler(req)
     end
 end
 
-function broadcast(json)
+function broadcast(gameId, json)
     # for all open client websockets, publish updated game
-    for ch in BROADCAST_CHANNELS
+    for ch in get(() -> Channel{String}[], BROADCAST_CHANNELS, gameId)
         put!(ch, json)
     end
     return
 end
 
-const BROADCAST_CHANNELS = Channel{String}[]
+const BROADCAST_CHANNELS = Dict{Int, Vector{Channel{String}}}()
 const WEBSOCKET_SERVER = Ref{Any}()
 
 function run()
-    WEBSOCKET_SERVER[] = @async HTTP.listen(IPv4(0, 0, 0, 0), 8080) do http
+    WEBSOCKET_SERVER[] = @async HTTP.listen(IPv4(0, 0, 0, 0), 8082) do http
         if HTTP.WebSockets.is_upgrade(http.message)
             HTTP.WebSockets.upgrade(http) do ws
+                @assert !eof(ws)
+                x = JSON3.read(readavailable(ws))
                 ch = Channel{String}(1)
-                push!(BROADCAST_CHANNELS, ch)
-                while !eof(ws)
-                    write(ws, take!(ch))
+                push!(get!(() -> Channel{String}[], BROADCAST_CHANNELS, x.gameId), ch)
+                while true
+                    msg = take!(ch)
+                    write(ws, msg)
                 end
             end
         end

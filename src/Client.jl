@@ -3,10 +3,11 @@ module Client
 using HTTP, JSON3, ..Model
 
 const SERVER = "http://localhost:8081" # mewtwo.bradr.dev:8081
-const WS = "ws://localhost:8080" # mewtwo.bradr.dev:8080
+const WS = "ws://localhost:8082" # mewtwo.bradr.dev:8080
 
-function websocket()
+function websocket(gameId)
     @async HTTP.WebSockets.open(WS) do ws
+        write(ws, JSON3.write((gameId=gameId,)))
         while !eof(ws)
             data = String(readavailable(ws))
             println("got game update: $data")

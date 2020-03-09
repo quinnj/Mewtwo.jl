@@ -278,9 +278,9 @@ servertask = @async Mewtwo.run()
 sleep(0.5)
 @test !istaskdone(servertask)
 
-wstask = Client.websocket()
-
 game = Client.createNewGame(6)
+
+wstask = Client.websocket(1)
 
 game = Client.joinGame(game.gameId, 1, "jacobah")
 game = Client.joinGame(game.gameId, 2, "ahindes5")
