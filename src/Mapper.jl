@@ -14,6 +14,13 @@ end
 
 getGame(gameId) = GAMES[gameId]
 
+getActiveGames() = [x for x in values(GAMES) if !x.finished]
+
+function deleteGame(gameId)
+    haskey(GAMES, gameId) && delete!(GAMES, gameId)
+    return
+end
+
 function updateGame(game)
     GAMES[game.gameId] = game
     return

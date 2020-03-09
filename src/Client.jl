@@ -44,6 +44,24 @@ function getGame(gameId)
     end
 end
 
+function getActiveGames()
+    resp = HTTP.get(string(SERVER, "/mewtwo/games"); status_exception=false)
+    if resp.status == 200
+        return JSON3.read(resp.body, Vector{Model.Game})
+    else
+        return resp
+    end
+end
+
+function deleteGame(gameId)
+    resp = HTTP.delete(string(SERVER, "/mewtwo/game/$gameId"); status_exception=false)
+    if resp.status == 200
+        return nothing
+    else
+        return resp
+    end
+end
+
 function joinGame(gameId, playerId, name)
     resp = HTTP.post(string(SERVER, "/mewtwo/game/$gameId"), [], JSON3.write((playerId=playerId, name=name)); status_exception=false)
     if resp.status == 200

@@ -35,6 +35,22 @@ getGame(req) = Service.getGame(parse(Int, HTTP.URIs.splitpath(req.target)[3]))
 HTTP.@register(ROUTER, "GET", "/mewtwo/game/*", getGame)
 
 """
+    getActiveGames
+
+GET to `/mewtwo/games`
+"""
+getActiveGames(req) = Service.getActiveGames()
+HTTP.@register(ROUTER, "GET", "/mewtwo/games", getActiveGames)
+
+"""
+    deleteGame
+
+DELETE to `/mewtwo/game/{gameId}`
+"""
+deleteGame(req) = Service.deleteGame(parse(Int, HTTP.URIs.splitpath(req.target)[3]))
+HTTP.@register(ROUTER, "DELETE", "/mewtwo/game/{gameId}", deleteGame)
+
+"""
     joinGame
 
 POST to `/mewtwo/game/{gameId}`, body like:

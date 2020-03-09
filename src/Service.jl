@@ -224,6 +224,15 @@ function getGame(gameId)
     return Mapper.getGame(gameId)
 end
 
+function getActiveGames()
+    return Mapper.getActiveGames()
+end
+
+function deleteGame(gameId)
+    Mapper.deleteGame(gameId)
+    return
+end
+
 function init()
     println("initializing Service")
     # force compilation of key methods
