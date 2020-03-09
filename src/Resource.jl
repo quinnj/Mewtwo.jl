@@ -23,8 +23,16 @@ HTTP.@register(ROUTER, "POST", "/mewtwo", createNewGame)
 
 POST to `/mewtwo/game/{gameId}/rematch`, no body required
 """
-rematch(req) = Service.rematch(HTTP.URIs.splitpath(req.target)[3])
+rematch(req) = Service.rematch(parse(Int, HTTP.URIs.splitpath(req.target)[3]))
 HTTP.@register(ROUTER, "POST", "/mewtwo/game/*/rematch", rematch)
+
+"""
+    getGame
+
+GET to `/mewtwo/game/{gameId}`
+"""
+getGame(req) = Service.getGame(parse(Int, HTTP.URIs.splitpath(req.target)[3]))
+HTTP.@register(ROUTER, "GET", "/mewtwo/game/*", getGame)
 
 """
     joinGame
@@ -39,7 +47,7 @@ POST to `/mewtwo/game/{gameId}`, body like:
 `playerId` corresponds to the "seat" around the table
 and user should be allowed to choose any empty seat.
 """
-joinGame(req) = Service.joinGame(HTTP.URIs.splitpath(req.target)[3], JSON3.read(req.body))
+joinGame(req) = Service.joinGame(parse(Int, HTTP.URIs.splitpath(req.target)[3]), JSON3.read(req.body))
 HTTP.@register(ROUTER, "POST", "/mewtwo/game/*", joinGame)
 
 """
@@ -47,7 +55,7 @@ HTTP.@register(ROUTER, "POST", "/mewtwo/game/*", joinGame)
 
 GET to `/mewtwo/game/{gameId}/hand/{playerId}`
 """
-getRoleAndHand(req) = Service.getRoleAndHand(HTTP.URIs.splitpath(req.target)[3], HTTP.URIs.splitpath(req.target)[5])
+getRoleAndHand(req) = Service.getRoleAndHand(parse(Int, HTTP.URIs.splitpath(req.target)[3]), parse(Int, HTTP.URIs.splitpath(req.target)[5]))
 HTTP.@register(ROUTER, "GET", "/mewtwo/game/*/hand/*", getRoleAndHand)
 
 """
@@ -55,8 +63,8 @@ HTTP.@register(ROUTER, "GET", "/mewtwo/game/*/hand/*", getRoleAndHand)
 
 GET to `/mewtwo/game/{gameId}/discard`
 """
-getDiscard(req) = Service.getDiscard(HTTP.URIs.splitpath(req.target)[3])
-HTTP.@register(ROUTER, "GET", "/mewtwo/game/*", getDiscard)
+getDiscard(req) = Service.getDiscard(parse(Int, HTTP.URIs.splitpath(req.target)[3]))
+HTTP.@register(ROUTER, "GET", "/mewtwo/game/*/discard", getDiscard)
 
 """
     takeAction
@@ -83,7 +91,7 @@ POST to `/mewtwo/game/{gameId}/action/{Action}`, body requirements depend on `Ac
 """
 function takeAction(req)
     path = HTTP.URIs.splitpath(req.target)
-    return Service.takeAction(path[3], JSON3.read(string('"', path[5], '"'), Model.CardType), JSON3.read(req.body))
+    return Service.takeAction(parse(Int, path[3]), JSON3.read(string('"', path[5], '"'), Model.Action), JSON3.read(req.body))
 end
 HTTP.@register(ROUTER, "POST", "/mewtwo/game/*/action/*", takeAction)
 
@@ -98,7 +106,7 @@ function requestHandler(req)
         end
         return HTTP.Response(200, JSON3.write(ret))
     catch e
-        return HTTP.Response(500, sprint(showerror, e))
+        return HTTP.Response(500, sprint(showerror, e, catch_backtrace()))
     end
 end
 
@@ -111,9 +119,10 @@ function broadcast(json)
 end
 
 const BROADCAST_CHANNELS = Channel{String}[]
+const WEBSOCKET_SERVER = Ref{Any}()
 
 function run()
-    @async HTTP.listen(IPv4(0, 0, 0, 0), 8080) do http
+    WEBSOCKET_SERVER[] = @async HTTP.listen(IPv4(0, 0, 0, 0), 8080) do http
         if HTTP.WebSockets.is_upgrade(http.message)
             HTTP.WebSockets.upgrade(http) do ws
                 ch = Channel{String}(1)

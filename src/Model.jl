@@ -76,7 +76,7 @@ mutable struct Pick
     roundPickNumber::Int
     card::Card
 end
-Pick() = Pick(0, 0, 0, 0, Card())
+Pick() = Pick(0, 0, 0, 0, 0, Card())
 Pick(a, b, c) = Pick(a, b, c, 0, 0, Card())
 StructTypes.StructType(::Type{Pick}) = StructTypes.Mutable()
 
@@ -84,7 +84,7 @@ mutable struct Game
     # core fields
     gameId::Int
     numPlayers::Int
-    players::Vector{Player}
+    players::Vector{Union{Nothing, Player}}
     whoseturn::Int # playerId
     nextExpectedAction::Action
     currentRound::Int
@@ -102,17 +102,18 @@ mutable struct Game
     privateActionResolution::Any
     # calculated fields
     pikasFound::Int
-    whoWon::Model.Role
-    Game() = new()
+    whoWon::Role
 end
+
+Game() = Game(0, 0, Union{Nothing, Player}[], 0, WaitingPlayers, 0, false, Pick[], Card[], Vector{Card}[], Role[], Good, nothing, nothing, 0, Good)
 
 StructTypes.StructType(::Type{Game}) = StructTypes.Mutable()
 StructTypes.excludes(::Type{Game}) = (:roles, :outRole)
 
-function copy(game::Game)
+function Base.copy(game::Game)
     g = Game()
     for f in fieldnames(Game)
-        if f != :privateActionResolution
+        if f != :privateActionResolution && isdefined(game, f)
             setfield!(g, f, getfield(game, f))
         end
     end

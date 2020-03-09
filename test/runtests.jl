@@ -272,3 +272,26 @@ game = Service.takeAction(game.gameId, Model.PickACard, body)
 @test game.privateActionResolution == Model.Bad
 
 Service.rematch(game.gameId)
+
+# test Resource.jl/Client.jl
+servertask = @async Mewtwo.run()
+sleep(0.5)
+@test !istaskdone(servertask)
+
+wstask = Client.websocket()
+
+game = Client.createNewGame(6)
+
+game = Client.joinGame(game.gameId, 1, "jacobah")
+game = Client.joinGame(game.gameId, 2, "ahindes5")
+game = Client.joinGame(game.gameId, 3, "velocipop")
+game = Client.joinGame(game.gameId, 4, "new")
+game = Client.joinGame(game.gameId, 5, "old")
+
+roleAndHand = Client.getRoleAndHand(game.gameId, 1)
+discard = Client.getDiscard(game.gameId)
+
+body = (pickingPlayerId=1, pickedPlayerId=2, cardNumberPicked=1)
+game = Client.takeAction(game.gameId, Model.PickACard, body)
+
+game = Client.rematch(game.gameId)

@@ -5,7 +5,7 @@ using ..Model, ..Mapper
 function generateDeckAndRoles(n)
     deck = copy(Model.StartingForFive)
     for i = 1:(n - 5)
-        append!(dec, [
+        append!(deck, [
             Model.Pikachu,
             rand(Model.Energies),
             rand(Model.Energies),
@@ -27,7 +27,8 @@ function createNewGame(params)
     game.finished = false
     game.picks = Model.Pick[]
     game.discard = Model.Card[]
-    game.players = Vector{Model.Player}(undef, game.numPlayers)
+    game.players = Vector{Union{Nothing, Model.Player}}(undef, game.numPlayers)
+    fill!(game.players, nothing)
     deck, roles = generateDeckAndRoles(game.numPlayers)
     game.roles = [pick!(roles) for i = 1:game.numPlayers]
     game.outRole = game.numPlayers != 6 ? pick!(roles) : Model.Good
@@ -155,7 +156,7 @@ end
 function takeAction(gameId, action, body)
     game = Mapper.getGame(gameId)
     if action == Model.PickACard
-        pick = Model.Pick(body...)
+        pick = Model.Pick(body.pickingPlayerId, body.pickedPlayerId, body.cardNumberPicked)
         pick.roundPicked = game.currentRound
         pick.roundPickNumber = length(currentRoundPicks(game)) + 1
         pick.card = splice!(game.hands[pick.pickedPlayerId], pick.cardNumberPicked)
@@ -216,6 +217,10 @@ end
 function getDiscard(gameId)
     game = Mapper.getGame(gameId)
     return (discard=[x.cardType for x in game.discard],)
+end
+
+function getGame(gameId)
+    return Mapper.getGame(gameId)
 end
 
 end # module

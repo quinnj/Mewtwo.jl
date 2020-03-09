@@ -12,6 +12,9 @@ using .Service; export Service
 include("Resource.jl")
 using .Resource; export Resource
 
+include("Client.jl")
+using .Client; export Client
+
 function init()
     # Mapper.init()
 end
