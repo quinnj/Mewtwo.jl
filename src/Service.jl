@@ -156,12 +156,16 @@ end
 
 function takeAction(gameId, action, body)
     game = Mapper.getGame(gameId)
-    if action == Model.PickACard
-        pick = Model.Pick(body.pickingPlayerId, body.pickedPlayerId, body.cardNumberPicked)
-        pick.roundPicked = game.currentRound
-        pick.roundPickNumber = length(currentRoundPicks(game)) + 1
-        pick.cardType = splice!(game.hands[pick.pickedPlayerId], pick.cardNumberPicked).cardType
-        resolvePick!(game, pick)
+    if action == Model.PickACard || action == Model.WooperJumpedOut
+        if rand(1:50) == 1
+            game.nextExpectedAction = Model.WooperJumpedOut
+        else
+            pick = Model.Pick(body.pickingPlayerId, body.pickedPlayerId, body.cardNumberPicked)
+            pick.roundPicked = game.currentRound
+            pick.roundPickNumber = length(currentRoundPicks(game)) + 1
+            pick.cardType = splice!(game.hands[pick.pickedPlayerId], pick.cardNumberPicked).cardType
+            resolvePick!(game, pick)
+        end
     elseif action == Model.WarpPointSteal
         card = splice!(game.hands[body.pickedPlayerId], body.cardNumberPicked)
         lastPick = game.picks[end]

@@ -87,7 +87,7 @@ HTTP.@register(ROUTER, "GET", "/mewtwo/game/*/discard", getDiscard)
 
 POST to `/mewtwo/game/{gameId}/action/{Action}`, body requirements depend on `Action`:
 
-* `PickACard`:
+* `PickACard` or `WooperJumpedOut`:
     * Body required: `{pickingPlayerId: number, pickedPlayerId: number, cardNumberPicked: number}`
 * `WarpPointSteal`:
     * Body required: `{pickedPlayerId: number, cardNumberPicked: number}`

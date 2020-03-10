@@ -60,6 +60,7 @@ StructTypes.StructType(::Type{Player}) = StructTypes.Struct()
 @enum Action begin
     WaitingPlayers
     PickACard
+    WooperJumpedOut
     WarpPointSteal
     PubliclyPeek
     EscapeACard
