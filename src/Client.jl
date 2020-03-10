@@ -2,13 +2,22 @@ module Client
 
 using HTTP, JSON3, ..Model
 
-# const SERVER = "http://localhost:8081"
-# const WS = "ws://localhost:8082"
-const SERVER = "http://mewtwo.bradr.dev:8081"
-const WS = "ws://mewtwo.bradr.dev:8082"
+const SERVER = Ref{String}()
+const WS = Ref{String}()
+
+function setServer!(loc=false)
+    SERVER[] = loc ? "http://localhost:8081" : "http://mewtwo.bradr.dev:8081"
+    WS[] = loc ? "ws://localhost:8082" : "ws://mewtwo.bradr.dev:8082"
+    return
+end
+
+function __init__()
+    setServer!()
+    return
+end
 
 function websocket(gameId)
-    @async HTTP.WebSockets.open(WS) do ws
+    @async HTTP.WebSockets.open(WS[]) do ws
         write(ws, JSON3.write((gameId=gameId,)))
         while !eof(ws)
             data = String(readavailable(ws))
@@ -18,7 +27,7 @@ function websocket(gameId)
 end
 
 function createNewGame(numPlayers)
-    resp = HTTP.post(string(SERVER, "/mewtwo"), [], JSON3.write((numPlayers=numPlayers,)); status_exception=false)
+    resp = HTTP.post(string(SERVER[], "/mewtwo"), [], JSON3.write((numPlayers=numPlayers,)); status_exception=false)
     if resp.status == 200
         return JSON3.read(resp.body, Model.Game)
     else
@@ -27,7 +36,7 @@ function createNewGame(numPlayers)
 end
 
 function rematch(gameId)
-    resp = HTTP.post(string(SERVER, "/mewtwo/game/$gameId/rematch"); status_exception=false)
+    resp = HTTP.post(string(SERVER[], "/mewtwo/game/$gameId/rematch"); status_exception=false)
     if resp.status == 200
         return JSON3.read(resp.body, Model.Game)
     else
@@ -36,7 +45,7 @@ function rematch(gameId)
 end
 
 function getGame(gameId)
-    resp = HTTP.get(string(SERVER, "/mewtwo/game/$gameId"); status_exception=false)
+    resp = HTTP.get(string(SERVER[], "/mewtwo/game/$gameId"); status_exception=false)
     if resp.status == 200
         return JSON3.read(resp.body, Model.Game)
     else
@@ -45,7 +54,7 @@ function getGame(gameId)
 end
 
 function getActiveGames()
-    resp = HTTP.get(string(SERVER, "/mewtwo/games"); status_exception=false)
+    resp = HTTP.get(string(SERVER[], "/mewtwo/games"); status_exception=false)
     if resp.status == 200
         return JSON3.read(resp.body, Vector{Model.Game})
     else
@@ -54,7 +63,7 @@ function getActiveGames()
 end
 
 function deleteGame(gameId)
-    resp = HTTP.delete(string(SERVER, "/mewtwo/game/$gameId"); status_exception=false)
+    resp = HTTP.delete(string(SERVER[], "/mewtwo/game/$gameId"); status_exception=false)
     if resp.status == 200
         return nothing
     else
@@ -63,7 +72,7 @@ function deleteGame(gameId)
 end
 
 function joinGame(gameId, playerId, name)
-    resp = HTTP.post(string(SERVER, "/mewtwo/game/$gameId"), [], JSON3.write((playerId=playerId, name=name)); status_exception=false)
+    resp = HTTP.post(string(SERVER[], "/mewtwo/game/$gameId"), [], JSON3.write((playerId=playerId, name=name)); status_exception=false)
     if resp.status == 200
         return JSON3.read(resp.body, Model.Game)
     else
@@ -72,7 +81,7 @@ function joinGame(gameId, playerId, name)
 end
 
 function getRoleAndHand(gameId, playerId)
-    resp = HTTP.get(string(SERVER, "/mewtwo/game/$gameId/hand/$playerId"),)
+    resp = HTTP.get(string(SERVER[], "/mewtwo/game/$gameId/hand/$playerId"),)
     if resp.status == 200
         return JSON3.read(resp.body)
     else
@@ -81,7 +90,7 @@ function getRoleAndHand(gameId, playerId)
 end
 
 function getDiscard(gameId)
-    resp = HTTP.get(string(SERVER, "/mewtwo/game/$gameId/discard"))
+    resp = HTTP.get(string(SERVER[], "/mewtwo/game/$gameId/discard"))
     if resp.status == 200
         return JSON3.read(resp.body, NamedTuple{(:discard,), Tuple{Vector{Model.CardType}}})
     else
@@ -90,7 +99,7 @@ function getDiscard(gameId)
 end
 
 function takeAction(gameId, action, body)
-    resp = HTTP.post(string(SERVER, "/mewtwo/game/$gameId/action/$action"), [], JSON3.write(body); status_exception=false)
+    resp = HTTP.post(string(SERVER[], "/mewtwo/game/$gameId/action/$action"), [], JSON3.write(body); status_exception=false)
     if resp.status == 200
         return JSON3.read(resp.body, Model.Game)
     else
