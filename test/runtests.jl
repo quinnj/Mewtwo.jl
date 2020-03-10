@@ -1,5 +1,17 @@
 using Test, Mewtwo
 
+function newgame()
+    game = Service.createNewGame((numPlayers=5,))
+    for i = 1:5
+        Service.joinGame(game.gameId, (playerId=i, name="$i"))
+    end
+    return game
+end
+
+@testset "Mewtwo" begin
+
+@testset "basics" begin
+
 game = Service.createNewGame((numPlayers=5,))
 # @test game.gameId == 1
 @test game.numPlayers == 5
@@ -23,13 +35,11 @@ game = Service.joinGame(game.gameId, (playerId=5, name="old"))
 
 x = Service.getRoleAndHand(game.gameId, 1)
 
-function newgame()
-    game = Service.createNewGame((numPlayers=5,))
-    for i = 1:5
-        Service.joinGame(game.gameId, (playerId=i, name="$i"))
-    end
-    return game
-end
+Service.rematch(game.gameId)
+
+end # @testset "basics"
+
+@testset "Picking various card types" begin
 
 game = newgame()
 game.whoseturn = 1
@@ -271,7 +281,9 @@ game = Service.takeAction(game.gameId, Model.PickACard, body)
 @test length(game.picks) == 1
 @test game.privateActionResolution == Model.Bad
 
-Service.rematch(game.gameId)
+end # @testset "Picking various card types"
+
+@testset "Test client/resource endpoints" begin
 
 # test Resource.jl/Client.jl
 servertask = @async Mewtwo.run()
@@ -280,7 +292,7 @@ sleep(0.5)
 
 game = Client.createNewGame(6)
 
-wstask = Client.websocket(1)
+wstask = Client.websocket(game.gameId)
 
 game = Client.joinGame(game.gameId, 1, "jacobah")
 game = Client.joinGame(game.gameId, 2, "ahindes5")
@@ -295,3 +307,6 @@ body = (pickingPlayerId=1, pickedPlayerId=2, cardNumberPicked=1)
 game = Client.takeAction(game.gameId, Model.PickACard, body)
 
 game = Client.rematch(game.gameId)
+
+end # @testset "Test client/resource endpoints"
+end # @testset "Mewtwo"
