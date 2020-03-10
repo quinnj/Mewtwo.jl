@@ -52,7 +52,7 @@ function joinGame(gameId, params)
     return calculateFields!(game)
 end
 
-numPikas(picks) = count(pick -> pick.card.cardType == Model.Pikachu, picks)
+numPikas(picks) = count(pick -> pick.cardType == Model.Pikachu, picks)
 
 function calculateFields!(game)
     # pikasFound
@@ -70,16 +70,16 @@ end
 
 function resolvePick!(game, pick)
     push!(game.picks, pick)
-    cardType = pick.card.cardType
+    cardType = pick.cardType
     # for almost all actions, the person picked gets to pick next
     whoseturn = game.whoseturn
     game.whoseturn = pick.pickedPlayerId
     if length(game.picks) > 1
-        if game.picks[end-1].card.cardType == Model.DualBall
+        if game.picks[end-1].cardType == Model.DualBall
             game.whoseturn = whoseturn
         end
         picks = currentRoundPicks(game)
-        if any(x -> x.card.cardType == Model.OldRodForFun, picks) && length(picks) < game.numPlayers
+        if any(x -> x.cardType == Model.OldRodForFun, picks) && length(picks) < game.numPlayers
             game.whoseturn = whoseturn
         end
     end
@@ -117,12 +117,12 @@ function resolvePick!(game, pick)
             game.nextExpectedAction = Model.RescueDiscarded
         end
     elseif cardType == Model.Switch
-        pikaPick = findlast(x -> x.card.cardType == Model.Pikachu, game.picks)
+        pikaPick = findlast(x -> x.cardType == Model.Pikachu, game.picks)
         if pikaPick !== nothing
             game.currentRound = currentRound
             # swap picks
-            pikaPick.card, pick.card = pick.card, pikaPick.card
-            push!(game.discard, pick.card)
+            pikaPick.cardType, pick.cardType = pick.cardType, pikaPick.cardType
+            push!(game.discard, Model.Card(pick.cardType, false))
             pop!(game.picks)
         end
     elseif cardType == Model.SuperScoopUp
@@ -160,7 +160,7 @@ function takeAction(gameId, action, body)
         pick = Model.Pick(body.pickingPlayerId, body.pickedPlayerId, body.cardNumberPicked)
         pick.roundPicked = game.currentRound
         pick.roundPickNumber = length(currentRoundPicks(game)) + 1
-        pick.card = splice!(game.hands[pick.pickedPlayerId], pick.cardNumberPicked)
+        pick.cardType = splice!(game.hands[pick.pickedPlayerId], pick.cardNumberPicked).cardType
         resolvePick!(game, pick)
     elseif action == Model.WarpPointSteal
         card = splice!(game.hands[body.pickedPlayerId], body.cardNumberPicked)
@@ -182,16 +182,9 @@ function takeAction(gameId, action, body)
     elseif action == Model.RescueDiscarded
         card = game.discard[body.cardNumberPicked]
         lastPick = game.picks[end]
-        lastPickCard, lastPick.card = lastPick.card, card
-        game.discard[body.cardNumberPicked] = lastPickCard
-        if lastPick.card.cardType == Model.Pikachu
-            if numPikas(game.picks) == game.numPlayers
-                game.finished = true
-            end
-        elseif lastPick.card.cardType == Model.Mewtwo
-            game.finished = true
-        end
-        game.nextExpectedAction = Model.PickACard
+        lastPickCardType, lastPick.cardType = lastPick.cardType, card.cardType
+        game.discard[body.cardNumberPicked] = Model.Card(lastPickCardType, false)
+        resolvePick!(game, lastPick)
     elseif action == Model.ScoopOldCard
         lastPick = game.picks[end]
         scooped = game.picks[body.pickNumber]

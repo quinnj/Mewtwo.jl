@@ -74,10 +74,10 @@ mutable struct Pick
     cardNumberPicked::Int
     roundPicked::Int
     roundPickNumber::Int
-    card::Card
+    cardType::CardType
 end
-Pick() = Pick(0, 0, 0, 0, 0, Card())
-Pick(a, b, c) = Pick(a, b, c, 0, 0, Card())
+Pick() = Pick(0, 0, 0, 0, 0, FireEnergy)
+Pick(a, b, c) = Pick(a, b, c, 0, 0, FireEnergy)
 StructTypes.StructType(::Type{Pick}) = StructTypes.Mutable()
 
 mutable struct Game
