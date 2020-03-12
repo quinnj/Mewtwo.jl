@@ -118,6 +118,7 @@ HTTP.@register(ROUTER, "GET", "/", getMewtwoApp)
 function requestHandler(req)
     start = Dates.now(Dates.UTC)
     if req.method == "OPTIONS"
+        @show req
         return HTTP.Response(200, [
             "Access-Control-Allow-Origin"=>"*",
             "Access-Control-Allow-Methods"=>"POST, GET, OPTIONS, DELETE",
