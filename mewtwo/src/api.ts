@@ -1,5 +1,5 @@
-let SERVER = 'http://localhost:8081';
-let WS = 'ws://localhost:8082';
+let SERVER = 'http://mewtwo.bradr.dev:8081';
+let WS = 'ws://mewtwo.bradr.dev:8082';
 
 export function setServer(loc = false) {
     SERVER = loc ? 'http://localhost:8081' : 'http://mewtwo.bradr.dev:8081';
