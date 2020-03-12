@@ -14,7 +14,7 @@ function generateDeckAndRoles(n)
             rand(Model.Energies)
         ])
     end
-    return deck, copy(Model.Roles[n])
+    return deck, shuffle!(copy(Model.Roles[n]))
 end
 
 pick!(A) = splice!(A, rand(1:length(A)))
@@ -22,16 +22,11 @@ pick!(A) = splice!(A, rand(1:length(A)))
 function createNewGame(params)
     game = Model.Game()
     game.numPlayers = params.numPlayers
-    game.whoseturn = rand(1:game.numPlayers)
-    game.nextExpectedAction = Model.WaitingPlayers
-    game.currentRound = 1
-    game.finished = false
-    game.picks = Model.Pick[]
-    game.discard = Model.Card[]
+    game.whoseturn = rand(0:game.numPlayers-1)
     game.players = Vector{Union{Nothing, Model.Player}}(undef, game.numPlayers)
     fill!(game.players, nothing)
     deck, roles = generateDeckAndRoles(game.numPlayers)
-    game.roles = [pick!(roles) for i = 1:game.numPlayers]
+    game.roles = roles
     game.outRole = game.numPlayers != 6 ? pick!(roles) : Model.Good
     game.hands = [[Model.Card(pick!(deck), false) for i = 1:5] for i = 1:game.numPlayers]
     return calculateFields!(Mapper.createNewGame(game))
@@ -44,8 +39,8 @@ end
 
 function joinGame(gameId, params)
     game = Mapper.getGame(gameId)
-    game.players[params.playerId] = Model.Player(params.name)
-    if all(i -> isassigned(game.players, i), 1:game.numPlayers)
+    game.players[params.playerId+1] = Model.Player(params.name)
+    if all(!isnothing, game.players)
         game.nextExpectedAction = Model.PickACard
     end
     Mapper.updateGame(game)
@@ -101,15 +96,18 @@ function resolvePick!(game, pick)
     elseif cardType == Model.PeekingRedCard
         game.nextExpectedAction = Model.PubliclyPeek
     elseif cardType == Model.Ghastly
-        pickedPlayerHand = game.hands[pick.pickedPlayerId]
+        pickedPlayerHand = game.hands[pick.pickedPlayerId+1]
         append!(game.discard, splice!(pickedPlayerHand, 1:length(pickedPlayerHand)))
     elseif cardType == Model.EscapeRope
-        game.nextExpectedAction = Model.EscapeACard
+        pickedPlayerHand = game.hands[pick.pickedPlayerId+1]
+        if !isempty(pickedPlayerHand)
+            game.nextExpectedAction = Model.EscapeACard
+        end
     elseif cardType == Model.ReverseValley
-        pickedPlayerHand = game.hands[pick.pickedPlayerId]
-        pickingPlayerHand = game.hands[pick.pickingPlayerId]
-        game.hands[pick.pickedPlayerId] = pickingPlayerHand
-        game.hands[pick.pickingPlayerId] = pickedPlayerHand
+        pickedPlayerHand = game.hands[pick.pickedPlayerId+1]
+        pickingPlayerHand = game.hands[pick.pickingPlayerId+1]
+        game.hands[pick.pickedPlayerId+1] = pickingPlayerHand
+        game.hands[pick.pickingPlayerId+1] = pickedPlayerHand
     elseif cardType == Model.RepeatBall
         game.whoseturn = pick.pickingPlayerId
     elseif cardType == Model.RescueStretcher
@@ -134,7 +132,7 @@ function resolvePick!(game, pick)
     elseif cardType == Model.DualBall
         nothing
     elseif cardType == Model.DetectivePikachu
-        game.privateActionResolution = game.roles[game.picks[end].pickedPlayerId]
+        game.privateActionResolution = game.roles[game.picks[end].pickedPlayerId+1]
     elseif cardType == Model.EnergySearch
         if game.numPlayers == 6
             game.nextExpectedAction = Model.EnergySearchSomeone
@@ -156,6 +154,8 @@ end
 
 function takeAction(gameId, action, body)
     game = Mapper.getGame(gameId)
+    game.nextExpectedAction === action || error("expected $(game.nextExpectedAction) to be taken; $action was attempted")
+    game.lastAction = action
     if action == Model.PickACard || action == Model.WooperJumpedOut
         if rand(1:50) == 1
             game.nextExpectedAction = Model.WooperJumpedOut
@@ -163,41 +163,42 @@ function takeAction(gameId, action, body)
             pick = Model.Pick(body.pickingPlayerId, body.pickedPlayerId, body.cardNumberPicked)
             pick.roundPicked = game.currentRound
             pick.roundPickNumber = length(currentRoundPicks(game)) + 1
-            pick.cardType = splice!(game.hands[pick.pickedPlayerId], pick.cardNumberPicked).cardType
+            pick.cardType = splice!(game.hands[pick.pickedPlayerId+1], pick.cardNumberPicked+1).cardType
             resolvePick!(game, pick)
         end
     elseif action == Model.WarpPointSteal
-        card = splice!(game.hands[body.pickedPlayerId], body.cardNumberPicked)
+        card = splice!(game.hands[body.pickedPlayerId+1], body.cardNumberPicked+1)
         lastPick = game.picks[end]
-        insert!(game.hands[lastPick.pickedPlayerId], lastPick.cardNumberPicked, card)
+        insert!(game.hands[lastPick.pickedPlayerId+1], lastPick.cardNumberPicked+1, card)
         card.sidewaysForNew = true
         game.privateActionResolution = card.cardType
         game.nextExpectedAction = Model.PickACard
     elseif action == Model.PubliclyPeek
-        card = game.hands[body.pickedPlayerId][body.cardNumberPicked]
+        card = game.hands[body.pickedPlayerId+1][body.cardNumberPicked+1]
         card.sidewaysForNew = true
         game.publicActionResolution = card.cardType
         game.nextExpectedAction = Model.PickACard
     elseif action == Model.EscapeACard
         lastPick = game.picks[end]
-        card = splice!(game.hands[lastPick.pickedPlayerId], body.cardNumberPicked)
+        hand = game.hands[lastPick.pickedPlayerId+1]
+        card = splice!(hand, findfirst(x -> x.cardType == body.cardType, hand))
         push!(game.discard, card)
         game.nextExpectedAction = Model.PickACard
     elseif action == Model.RescueDiscarded
-        card = game.discard[body.cardNumberPicked]
+        card = game.discard[body.cardNumberPicked+1]
         lastPick = game.picks[end]
         lastPickCardType, lastPick.cardType = lastPick.cardType, card.cardType
-        game.discard[body.cardNumberPicked] = Model.Card(lastPickCardType, false)
+        game.discard[body.cardNumberPicked+1] = Model.Card(lastPickCardType, false)
         resolvePick!(game, lastPick)
     elseif action == Model.ScoopOldCard
         lastPick = game.picks[end]
-        scooped = game.picks[body.pickNumber]
-        insert!(game.hands[lastPick.pickedPlayerId], lastPick.cardNumberPicked, scooped.card)
+        scooped = game.picks[body.pickNumber+1]
+        insert!(game.hands[lastPick.pickedPlayerId+1], lastPick.cardNumberPicked+1, scooped.card)
         scooped.card = lastPick.card
         pop!(game.picks)
         game.nextExpectedAction = Model.PickACard
     elseif action == Model.EnergySearchSomeone
-        game.privateActionResolution = game.roles[body.pickedPlayerId]
+        game.privateActionResolution = (playerId=body.pickedPlayerId, role=game.roles[body.pickedPlayerId+1])
         game.nextExpectedAction = Model.PickACard
     else
         error("unsupported action = $action")
@@ -208,8 +209,8 @@ end
 
 function getRoleAndHand(gameId, playerId)
     game = Mapper.getGame(gameId)
-    hand = game.hands[playerId]
-    return (hand=shuffle!([x.cardType for x in hand]), role=game.roles[playerId])
+    hand = game.hands[playerId+1]
+    return (hand=shuffle!([x.cardType for x in hand]), role=game.roles[playerId+1])
 end
 
 function getDiscard(gameId)
@@ -235,7 +236,9 @@ function init()
     # force compilation of key methods
     game = createNewGame((numPlayers=5,))
     joinGame(game.gameId, (playerId=1, name=""))
+    game.nextExpectedAction = Model.PickACard
     takeAction(game.gameId, Model.PickACard, (pickingPlayerId=1, pickedPlayerId=2, cardNumberPicked=1))
+    game.finished = true
     println("initialized Service")
     return
 end

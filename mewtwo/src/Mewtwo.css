@@ -1,0 +1,8 @@
+.sidewaysForNew {
+  transform: rotate(90deg);
+}
+
+.hand {
+  display: flex;
+  flex-direction: row;
+}

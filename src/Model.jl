@@ -87,6 +87,7 @@ mutable struct Game
     numPlayers::Int
     players::Vector{Union{Nothing, Player}}
     whoseturn::Int # playerId
+    lastAction::Action
     nextExpectedAction::Action
     currentRound::Int
     finished::Bool
@@ -106,7 +107,7 @@ mutable struct Game
     whoWon::Role
 end
 
-Game() = Game(0, 0, Union{Nothing, Player}[], 0, WaitingPlayers, 0, false, Pick[], Card[], Vector{Card}[], Role[], Good, nothing, nothing, 0, Good)
+Game() = Game(0, 0, Union{Nothing, Player}[], 0, WaitingPlayers, WaitingPlayers, 1, false, Pick[], Card[], Vector{Card}[], Role[], Good, nothing, nothing, 0, Good)
 
 StructTypes.StructType(::Type{Game}) = StructTypes.Mutable()
 StructTypes.excludes(::Type{Game}) = (:roles, :outRole)

@@ -48,7 +48,7 @@ HTTP.@register(ROUTER, "GET", "/mewtwo/games", getActiveGames)
 DELETE to `/mewtwo/game/{gameId}`
 """
 deleteGame(req) = Service.deleteGame(parse(Int, HTTP.URIs.splitpath(req.target)[3]))
-HTTP.@register(ROUTER, "DELETE", "/mewtwo/game/{gameId}", deleteGame)
+HTTP.@register(ROUTER, "DELETE", "/mewtwo/game/*", deleteGame)
 
 """
     joinGame
@@ -96,7 +96,7 @@ POST to `/mewtwo/game/{gameId}/action/{Action}`, body requirements depend on `Ac
     * Body required: `{pickedPlayerId: number, cardNumberPicked: number}`
     * Returns: `game.publicActionResolution` has the `CardType` the player peeked at
 * `EscapeACard`:
-    * Body required: `{cardNumberPicked: number}`, card number of player's own hand
+    * Body required: `{cardType: CardType}`, cardType of player's own hand they want to discard
 * `RescueDiscarded`:
     * Body required: `{cardNumberPicked: number}`, card number of `game.discard`
 * `ScoopOldCard`:
@@ -111,10 +111,21 @@ function takeAction(req)
 end
 HTTP.@register(ROUTER, "POST", "/mewtwo/game/*/action/*", takeAction)
 
+const WEBAPP_DIR = joinpath(@__DIR__, "../mewtwo/build")
+getMewtwoApp(req) = HTTP.Response(200, read(joinpath(WEBAPP_DIR, req.target == "/" ? "index.html" : chop(req.target, head=1, tail=0))))
+HTTP.@register(ROUTER, "GET", "/", getMewtwoApp)
+
 function requestHandler(req)
+    start = Dates.now(Dates.UTC)
+    if req.method == "OPTIONS"
+        return HTTP.Response(200, [
+            "Access-Control-Allow-Origin"=>"*",
+            "Access-Control-Allow-Methods"=>"POST, GET, OPTIONS, DELETE",
+            "Access-Control-Allow-Headers"=>"x-domo-requestcontext, x-requested-with, content-type"
+        ])
+    end
     try
-        start = Dates.now(Dates.UTC)
-        println((now=start, event="ServiceRequestBegin", method=req.method, target=req.target))
+        println((now=start, event="ServiceRequestBegin", method=req.method, target=req.target, headers=req.headers, body=String(copy(req.body))))
         ret = HTTP.handle(ROUTER, req)
         if ret isa Model.Game
             # broadcast updated game to all clients
@@ -123,21 +134,32 @@ function requestHandler(req)
             broadcast(ret.gameId, JSON3.write(copy(ret)))
         end
         stop = Dates.now(Dates.UTC)
-        resp = HTTP.Response(200, JSON3.write(ret))
-        println((now=stop, event="ServiceRequestEnd", method=req.method, target=req.target, duration=Dates.value(stop - start), status=resp.status, bodysize=length(resp.body)))
-        return resp
+        if ret isa HTTP.Response
+            println((now=stop, event="ServiceRequestEnd", method=req.method, target=req.target, duration=Dates.value(stop - start), status=ret.status, bodysize=length(ret.body)))
+            return ret
+        else
+            resp = HTTP.Response(200, ["Access-Control-Allow-Origin"=>"*"]; body=JSON3.write(ret))
+            println((now=stop, event="ServiceRequestEnd", method=req.method, target=req.target, duration=Dates.value(stop - start), status=resp.status, body=String(copy(resp.body))))
+            return resp
+        end
     catch e
+        @error "requestHandler" exception=(e, catch_backtrace())
         resp = HTTP.Response(500, sprint(showerror, e, catch_backtrace()))
-        println((now=stop, event="ServiceRequestEnd", method=req.method, target=req.target, duration=Dates.value(stop - start), status=resp.status, bodysize=length(resp.body)))
+        stop = Dates.now(Dates.UTC)
+        println((now=stop, event="ServiceRequestEnd", method=req.method, target=req.target, duration=Dates.value(stop - start), status=resp.status, body=String(copy(resp.body))))
         return resp
     end
 end
 
 function broadcast(gameId, json)
     # for all open client websockets, publish updated game
-    for ch in get(() -> Channel{String}[], BROADCAST_CHANNELS, gameId)
-        put!(ch, json)
+    chans = get(() -> Channel{String}[], BROADCAST_CHANNELS, gameId)
+    for ch in chans
+        if isopen(ch)
+            put!(ch, json)
+        end
     end
+    filter!(isopen, chans)
     return
 end
 
@@ -161,9 +183,15 @@ function run()
                 x = JSON3.read(readavailable(ws))
                 ch = Channel{String}(1)
                 push!(get!(() -> Channel{String}[], BROADCAST_CHANNELS, x.gameId), ch)
-                while true
-                    msg = take!(ch)
-                    write(ws, msg)
+                try
+                    while true
+                        msg = take!(ch)
+                        write(ws, msg)
+                    end
+                catch e
+                    @warn sprint(showerror, e, catch_backtrace())
+                finally
+                    close(ch)
                 end
             end
         end
