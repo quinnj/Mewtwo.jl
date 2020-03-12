@@ -1,13 +1,5 @@
-let SERVER = 'http://mewtwo.bradr.dev:8081';
-let WS = 'ws://mewtwo.bradr.dev:8082';
-
-export function setServer(loc = false) {
-    SERVER = loc ? 'http://localhost:8081' : 'http://mewtwo.bradr.dev:8081';
-    WS = loc ? 'ws://localhost:8082' : 'ws://mewtwo.bradr.dev:8082';
-}
-
 export function syncGame(gameId: number) {
-    let ws = new WebSocket(WS);
+    let ws = new WebSocket("/websocket");
     ws.onopen = () => {
         ws.send(JSON.stringify({ gameId: gameId }));
     };
@@ -94,43 +86,39 @@ const http = {
     get: (url: string) => {
         return fetch(url, {
             method: 'GET',
-            mode: 'cors',
         }).then(x => x.json())
     },
     post: (url: string, data?: any) => {
         return fetch(url, {
             method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         }).then(x => x.json())
     },
     delete: (url: string) => {
         return fetch(url, {
             method: 'DELETE',
-            mode: 'cors'
         }).then(x => x.json())
     }
 }
 
 export function createNewGame(numPlayers: number): Promise<Game> {
-    return http.post(`${SERVER}/mewtwo`, { numPlayers });
+    return http.post(`/mewtwo`, { numPlayers });
 }
 
 export function rematch(gameId: number): Promise<Game> {
-    return http.post(`${SERVER}/mewtwo/game/${gameId}/rematch`);
+    return http.post(`/mewtwo/game/${gameId}/rematch`);
 }
 
 export function getGame(gameId: number): Promise<Game> {
-    return http.get(`${SERVER}/mewtwo/game/${gameId}`);
+    return http.get(`/mewtwo/game/${gameId}`);
 }
 
 export function getActiveGames(): Promise<Game[]> {
-    return http.get(`${SERVER}/mewtwo/games`);
+    return http.get(`/mewtwo/games`);
 }
 
 export function deleteGame(gameId: number) {
-    return http.delete(`${SERVER}/mewtwo/game/${gameId}`);
+    return http.delete(`/mewtwo/game/${gameId}`);
 }
 
 export function joinGame(
@@ -139,7 +127,7 @@ export function joinGame(
     name: string,
 ): Promise<Game> {
     return http
-        .post(`${SERVER}/mewtwo/game/${gameId}`, { playerId, name })
+        .post(`/mewtwo/game/${gameId}`, { playerId, name })
         ;
 }
 
@@ -153,12 +141,12 @@ export function getRoleAndHand(
     playerId: number,
 ): Promise<RoleAndHand> {
     return http
-        .get(`${SERVER}/mewtwo/game/${gameId}/hand/${playerId}`)
+        .get(`/mewtwo/game/${gameId}/hand/${playerId}`)
         ;
 }
 
 export function getDiscard(gameId: number): Promise<{ discard: CardType[] }> {
-    return http.get(`${SERVER}/mewtwo/game/${gameId}/discard`);
+    return http.get(`/mewtwo/game/${gameId}/discard`);
 }
 
 export function takeAction(
@@ -167,6 +155,6 @@ export function takeAction(
     body: any,
 ): Promise<Game> {
     return http
-        .post(`${SERVER}/mewtwo/game/${gameId}/action/${action}`, body)
+        .post(`/mewtwo/game/${gameId}/action/${action}`, body)
         ;
 }

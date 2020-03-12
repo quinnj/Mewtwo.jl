@@ -15,6 +15,9 @@ using .Resource; export Resource
 include("Client.jl")
 using .Client; export Client
 
+include("Play.jl")
+using .Play; export Play
+
 function init()
     Mapper.init()
     Service.init()

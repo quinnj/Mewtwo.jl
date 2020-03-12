@@ -16,13 +16,13 @@ function __init__()
     return
 end
 
-function websocket(gameId)
+function websocket(gameId, gameref)
     @async HTTP.WebSockets.open(WS[]) do ws
         write(ws, JSON3.write((gameId=gameId,)))
         while !eof(ws)
-            data = String(readavailable(ws))
-            println("got game update: $data")
+            gameref[] = JSON3.read(readavailable(ws), Model.Game)
         end
+        println("websocket for game = $gameId disconnected")
     end
 end
 
