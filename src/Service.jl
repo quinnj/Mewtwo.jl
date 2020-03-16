@@ -131,7 +131,7 @@ function resolvePick!(game, pick)
     elseif cardType == Model.RepeatBall
         game.whoseturn = pick.pickingPlayerId
     elseif cardType == Model.RescueStretcher
-        if !isempty(game.discard)
+        if !isempty(game.discard) && length(currentRoundPicks(game)) < game.numPlayers
             game.nextExpectedAction = Model.RescueDiscarded
             game.whoseturn = pick.pickedPlayerId
         end
