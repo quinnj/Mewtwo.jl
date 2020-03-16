@@ -169,7 +169,7 @@ function gameLoop(game, playerId)
                 println("stole: $(game.game.privateActionResolution)")
                 entertocontinue()
             elseif game.game.nextExpectedAction == Model.PubliclyPeek
-                peeps = [i for i in notyou(game, playerId) if length(game.game.hands[i+1]) > 0]
+                peeps = [i for i = 0:(game.game.numPlayers-1) if length(game.game.hands[i+1]) > 0]
                 pickedPlayerId = radiox("peek at who", peeps, x->game.game.players[x+1].name)
                 if length(game.game.hands[pickedPlayerId+1]) == 1
                     println("$(game.game.players[pickedPlayerId+1].name) only has one card")
@@ -224,7 +224,7 @@ function gameLoop(game, playerId)
             g = game.game
             pickedPlayerId, cardNumberPicked, cardType = g.publicActionResolution["pickedPlayerId"], g.publicActionResolution["cardNumberPicked"], g.publicActionResolution["cardType"]
             p2 = g.players[pickedPlayerId+1].name
-            println("$p peeked at $p2, card # = $(cardNumberPicked), it was $(cardType)")
+            println("$p peeked at $p2, it was $(cardType)")
             entertocontinue()
         else
             p = game.game.players[game.game.whoseturn+1].name
