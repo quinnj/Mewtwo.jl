@@ -2,34 +2,45 @@ module Mapper
 
 using ..Model
 
-const GAME_ID = Ref{Int}(0)
+const GAME_ID = Threads.Atomic{Int}(0)
 
-const GAMES = Dict{Int, Model.Game}()
+struct Games
+    lock::ReentrantLock
+    games::Dict{Int, Model.Game}
+end
+
+const GAMES = Games(ReentrantLock(), Dict{Int, Model.Game}())
 
 function createNewGame(game)
-    game.gameId = (GAME_ID[] += 1)
-    GAMES[game.gameId] = game
+    game.gameId = Threads.atomic_add!(GAME_ID, 1)
+    lock(GAMES.lock) do
+        GAMES.games[game.gameId] = game
+    end
     return game
 end
 
-getGame(gameId) = GAMES[gameId]
+getGame(gameId) = GAMES.games[gameId]
 
-getActiveGames() = [x for x in values(GAMES) if !x.finished]
+getActiveGames() = [x for x in values(GAMES.games) if !x.finished]
 
 function deleteGame(gameId)
-    haskey(GAMES, gameId) && delete!(GAMES, gameId)
+    lock(GAMES.lock) do
+        haskey(GAMES.games, gameId) && delete!(GAMES.games, gameId)
+    end
     return
 end
 
 function updateGame(game)
-    GAMES[game.gameId] = game
+    lock(GAMES.lock) do
+        GAMES.games[game.gameId] = game
+    end
     return
 end
 
 function init()
     println("initializing Mapper")
     GAME_ID[] = 0
-    empty!(GAMES)
+    empty!(GAMES.games)
     println("initialized Mapper")
     return
 end

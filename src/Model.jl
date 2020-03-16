@@ -37,6 +37,7 @@ end
 Card() = Card(GrassEnergy, false)
 StructTypes.StructType(::Type{Card}) = StructTypes.Mutable()
 StructTypes.excludes(::Type{Card}) = (:cardType,)
+Base.string(c::Card) = c.sidewaysForNew ? "Card(sidewaysForNew=true)" : "Card()"
 
 @enum Role Good Bad
 
@@ -81,7 +82,14 @@ Pick() = Pick(0, 0, 0, 0, 0, FireEnergy)
 Pick(a, b, c) = Pick(a, b, c, 0, 0, FireEnergy)
 StructTypes.StructType(::Type{Pick}) = StructTypes.Mutable()
 
+struct Discard
+    discard::Vector{CardType}
+end
+
+StructTypes.StructType(::Type{Discard}) = StructTypes.Struct()
+
 mutable struct Game
+    lock::ReentrantLock
     # core fields
     gameId::Int
     numPlayers::Int
@@ -95,6 +103,7 @@ mutable struct Game
     picks::Vector{Pick}
     discard::Vector{Card}
     hands::Vector{Vector{Card}} # length == numPlayers
+    hideOwnHand::Vector{Bool}
     # hidden fields
     roles::Vector{Role} # length == numPlayers
     outRole::Role
@@ -107,10 +116,10 @@ mutable struct Game
     whoWon::Role
 end
 
-Game() = Game(0, 0, Union{Nothing, Player}[], 0, WaitingPlayers, WaitingPlayers, 1, false, Pick[], Card[], Vector{Card}[], Role[], Good, nothing, nothing, 0, Good)
+Game() = Game(ReentrantLock(), 0, 0, Union{Nothing, Player}[], 0, WaitingPlayers, WaitingPlayers, 1, false, Pick[], Card[], Vector{Card}[], Bool[], Role[], Good, nothing, nothing, 0, Good)
 
 StructTypes.StructType(::Type{Game}) = StructTypes.Mutable()
-StructTypes.excludes(::Type{Game}) = (:roles, :outRole)
+StructTypes.excludes(::Type{Game}) = (:lock, :roles, :outRole)
 
 function Base.copy(game::Game)
     g = Game()

@@ -56,12 +56,9 @@ HTTP.@register(ROUTER, "DELETE", "/mewtwo/game/*", deleteGame)
 POST to `/mewtwo/game/{gameId}`, body like:
 ```
 {
-    playerId: 1,
     name: "ahindes5"
 }
 ```
-`playerId` corresponds to the "seat" around the table
-and user should be allowed to choose any empty seat.
 """
 joinGame(req) = Service.joinGame(parse(Int, HTTP.URIs.splitpath(req.target)[3]), JSON3.read(req.body))
 HTTP.@register(ROUTER, "POST", "/mewtwo/game/*", joinGame)
@@ -118,7 +115,6 @@ HTTP.@register(ROUTER, "GET", "/", getMewtwoApp)
 function requestHandler(req)
     start = Dates.now(Dates.UTC)
     if req.method == "OPTIONS"
-        @show req
         return HTTP.Response(200, [
             "Access-Control-Allow-Origin"=>"*",
             "Access-Control-Allow-Methods"=>"POST, GET, OPTIONS, DELETE",
@@ -171,7 +167,9 @@ function init()
     println("initializing Resource")
     # force compilation
     req = HTTP.Request("GET", "/", [], JSON3.write((numPlayers=5,)))
-    createNewGame(req)
+    game = createNewGame(req)
+    req = HTTP.Request("DELETE", "/mewtwo/game/$(game.gameId)")
+    deleteGame(req)
     println("initialized Resource")
     return
 end

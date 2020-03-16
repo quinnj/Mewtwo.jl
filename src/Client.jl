@@ -16,11 +16,12 @@ function __init__()
     return
 end
 
-function websocket(gameId, gameref)
+function websocket(gameId, game)
     @async HTTP.WebSockets.open(WS[]) do ws
         write(ws, JSON3.write((gameId=gameId,)))
         while !eof(ws)
-            gameref[] = JSON3.read(readavailable(ws), Model.Game)
+            game.game = JSON3.read(readavailable(ws), Model.Game)
+            notify(game.cond)
         end
         println("websocket for game = $gameId disconnected")
     end
@@ -71,8 +72,8 @@ function deleteGame(gameId)
     end
 end
 
-function joinGame(gameId, playerId, name)
-    resp = HTTP.post(string(SERVER[], "/mewtwo/game/$gameId"), [], JSON3.write((playerId=playerId, name=name)); status_exception=false)
+function joinGame(gameId, name)
+    resp = HTTP.post(string(SERVER[], "/mewtwo/game/$gameId"), [], JSON3.write((name=name,)); status_exception=false)
     if resp.status == 200
         return JSON3.read(resp.body, Model.Game)
     else
@@ -92,7 +93,7 @@ end
 function getDiscard(gameId)
     resp = HTTP.get(string(SERVER[], "/mewtwo/game/$gameId/discard"))
     if resp.status == 200
-        return JSON3.read(resp.body, NamedTuple{(:discard,), Tuple{Vector{Model.CardType}}})
+        return JSON3.read(resp.body, Model.Discard)
     else
         return resp
     end
