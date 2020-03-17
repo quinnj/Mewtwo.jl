@@ -80,6 +80,14 @@ getDiscard(req) = Service.getDiscard(parse(Int, HTTP.URIs.splitpath(req.target)[
 HTTP.@register(ROUTER, "GET", "/mewtwo/game/*/discard", getDiscard)
 
 """
+    getScoopables
+
+GET to `/mewtwo/game/{gameId}/scoop`
+"""
+getScoopables(req) = Service.getScoopables(parse(Int, HTTP.URIs.splitpath(req.target)[3]))
+HTTP.@register(ROUTER, "GET", "/mewtwo/game/*/scoop", getScoopables)
+
+"""
     takeAction
 
 POST to `/mewtwo/game/{gameId}/action/{Action}`, body requirements depend on `Action`:
@@ -97,10 +105,10 @@ POST to `/mewtwo/game/{gameId}/action/{Action}`, body requirements depend on `Ac
 * `RescueDiscarded`:
     * Body required: `{cardNumberPicked: number}`, card number of `game.discard`
 * `ScoopOldCard`:
-    * Body required: `{pickNumber: number}`, index (1-based) of pick in `game.picks` that should be scooped
+    * Body required: `{cardType: CardType}`, cardType of pick in `game.picks` that should be scooped
 * `EnergySearchSomeone`:
     * Body required: `{pickedPlayerId: number}`
-    * Returns: `game.privateActionResolution` has the `Role` of the player id
+    * Returns: `game.privateActionResolution` has the `Role` of the player id or out role
 """
 function takeAction(req)
     path = HTTP.URIs.splitpath(req.target)

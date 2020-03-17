@@ -187,6 +187,10 @@ function resolvePick!(game, pick)
 end
 
 function newRound!(game)
+    if game.currentRound == 5
+        game.finished = true
+        return
+    end
     discarded = splice!(game.discard, 1:length(game.discard))
     # remove round picks from available cards
     lastRoundPicks = filter(x -> x.roundPicked == game.currentRound - 1, game.picks)
@@ -268,7 +272,7 @@ function takeAction(gameId, action, body)
         checkOldRodDualBall!(game)
     elseif action == Model.ScoopOldCard
         scoopPick = pop!(game.picks)
-        scoopedPick = game.picks[body.pickNumber+1]
+        scoopedPick = game.picks[findfirst(x -> string(x.cardType) == body.cardType, game.picks)]
         push!(game.cardTypes, scoopedPick.cardType)
         insert!(game.hands[scoopPick.pickedPlayerId+1], scoopPick.cardNumberPicked+1, Model.Card(length(game.cardTypes), true))
         scoopedPick.cardType = Model.SuperScoopUp
@@ -281,7 +285,7 @@ function takeAction(gameId, action, body)
         end
     elseif action == Model.EnergySearchSomeone
         if game.numPlayers == 6
-            game.privateActionResolution = (playerId=body.pickedPlayerId, role=game.roles[body.pickedPlayerId+1])
+            game.privateActionResolution = game.roles[body.pickedPlayerId+1]
         else
             game.privateActionResolution = game.outRole
         end
@@ -308,6 +312,11 @@ end
 function getDiscard(gameId)
     game = Mapper.getGame(gameId)
     return [game.cardTypes[card.i] for card in game.discard]
+end
+
+function getScoopables(gameId)
+    game = Mapper.getGame(gameId)
+    return [x.cardType for x in game.picks if x.roundPicked < game.currentRound && x.cardType != Model.Pikachu]
 end
 
 function getGame(gameId)

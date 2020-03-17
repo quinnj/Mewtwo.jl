@@ -99,6 +99,15 @@ function getDiscard(gameId)
     end
 end
 
+function getScoopables(gameId)
+    resp = HTTP.get(string(SERVER[], "/mewtwo/game/$gameId/scoop"))
+    if resp.status == 200
+        return JSON3.read(resp.body, Vector{Model.CardType})
+    else
+        return resp
+    end
+end
+
 function takeAction(gameId, action, body)
     resp = HTTP.post(string(SERVER[], "/mewtwo/game/$gameId/action/$action"), [], JSON3.write(body); status_exception=false)
     if resp.status == 200

@@ -119,7 +119,7 @@ function gameLoop(game, playerId)
         println("waiting for others to arrive")
         wait(game.cond)
     end
-    currentRound = 1
+    currentRound = game.game.currentRound
     roleAndHand = Client.getRoleAndHand(game.game.gameId, playerId)
     while true
         gamereport(game.game, playerId, roleAndHand)
@@ -223,15 +223,15 @@ function gameLoop(game, playerId)
                 end
                 game.game = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (cardNumberPicked=cardNumberPicked,))
             elseif game.game.nextExpectedAction == Model.ScoopOldCard
-                picks = filter(x -> x.roundPicked < game.game.currentRound, game.game.picks)
-                pickNumber = radiox("scoop what", 0:(length(picks)-1), x->string(picks[x+1].cardType))
-                game.game = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (pickNumber=pickNumber,))
+                scoopables = Client.getScoopables(game.game.gameId)
+                scooped = radiox("scoop what", scoopables)
+                game.game = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (cardType=scooped,))
             elseif game.game.nextExpectedAction == Model.EnergySearchSomeone
                 if game.game.numPlayers == 6
                     pickedPlayerId = radiox("energy search who", notyou(game, playerId), x->game.game.players[x+1].name)
                     game.game = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (pickedPlayerId=pickedPlayerId,))
                     p = game.game.players[pickedPlayerId+1].name
-                    println("inspected $p, they're a $(game.game.publicActionResolution == "Good" ? "goody" : "baddo")")
+                    println("inspected $p, they're a $(game.game.privateActionResolution == "Good" ? "goody" : "baddo")")
                 else
                     game.game = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, NamedTuple())
                     println("your energy search was picked, out card is a $(game.game.privateActionResolution == "Good" ? "goody" : "baddo")")
