@@ -132,7 +132,8 @@ function gameLoop(game, playerId)
                     entertocontinue()
                     cardNumberPicked = 0
                 else
-                    cardNumberPicked = radiox("pick what", 0:(length(game.game.hands[pickedPlayerId+1])-1), x->string(game.game.hands[pickedPlayerId+1][x+1]))
+                    cardNumberPicked = radiox("pick what", 0:(length(game.game.hands[pickedPlayerId+1])), x->x == length(game.game.hands[pickedPlayerId+1]) ? "go back" : string(game.game.hands[pickedPlayerId+1][x+1]))
+                    cardNumberPicked == length(game.game.hands[pickedPlayerId+1]) && continue
                 end
                 g = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (pickingPlayerId=playerId, pickedPlayerId=pickedPlayerId, cardNumberPicked=cardNumberPicked))
                 game.game = g
@@ -143,6 +144,9 @@ function gameLoop(game, playerId)
                         println("you picked dp, $p is a $(g.privateActionResolution == "Good" ? "goody" : "baddo")")
                         entertocontinue()
                     end
+                elseif g.publicActionResolution !== nothing
+                    println(g.publicActionResolution)
+                    entertocontinue()
                 end
             elseif game.game.nextExpectedAction == Model.WooperJumpedOut
                 peeps = [i for i in notyou(game, playerId) if length(game.game.hands[i+1]) > 0]
@@ -152,9 +156,22 @@ function gameLoop(game, playerId)
                     entertocontinue()
                     cardNumberPicked = 0
                 else
-                    cardNumberPicked = radiox("pick what", 0:(length(game.game.hands[pickedPlayerId+1])-1), x->string(game.game.hands[pickedPlayerId+1][x+1]))
+                    cardNumberPicked = radiox("pick what", 0:(length(game.game.hands[pickedPlayerId+1])), x->x == length(game.game.hands[pickedPlayerId+1]) ? "go back" : string(game.game.hands[pickedPlayerId+1][x+1]))
+                    cardNumberPicked == length(game.game.hands[pickedPlayerId+1]) && continue
                 end
-                game.game = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (pickingPlayerId=playerId, pickedPlayerId=pickedPlayerId, cardNumberPicked=cardNumberPicked))
+                g = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (pickingPlayerId=playerId, pickedPlayerId=pickedPlayerId, cardNumberPicked=cardNumberPicked))
+                game.game = g
+                if g.privateActionResolution !== nothing
+                    pick = g.picks[end]
+                    if pick.cardType == Model.DetectivePikachu
+                        p = g.players[pick.pickedPlayerId+1].name 
+                        println("you picked dp, $p is a $(g.privateActionResolution == "Good" ? "goody" : "baddo")")
+                        entertocontinue()
+                    end
+                elseif g.publicActionResolution !== nothing
+                    println(g.publicActionResolution)
+                    entertocontinue()
+                end
             elseif game.game.nextExpectedAction == Model.WarpPointSteal
                 peeps = [i for i in notyou(game, playerId) if length(game.game.hands[i+1]) > 0]
                 pickedPlayerId = radiox("steal from who", peeps, x->game.game.players[x+1].name)
@@ -163,7 +180,8 @@ function gameLoop(game, playerId)
                     entertocontinue()
                     cardNumberPicked = 0
                 else
-                    cardNumberPicked = radiox("steal what", 0:(length(game.game.hands[pickedPlayerId+1])-1), x->string(game.game.hands[pickedPlayerId+1][x+1]))
+                    cardNumberPicked = radiox("steal what", 0:(length(game.game.hands[pickedPlayerId+1])), x->x == length(game.game.hands[pickedPlayerId+1]) ? "go back" : string(game.game.hands[pickedPlayerId+1][x+1]))
+                    cardNumberPicked == length(game.game.hands[pickedPlayerId+1]) && continue
                 end
                 game.game = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (pickedPlayerId=pickedPlayerId, cardNumberPicked=cardNumberPicked))
                 println("stole: $(game.game.privateActionResolution)")
@@ -176,7 +194,8 @@ function gameLoop(game, playerId)
                     entertocontinue()
                     cardNumberPicked = 0
                 else
-                    cardNumberPicked = radiox("peek what", 0:(length(game.game.hands[pickedPlayerId+1])-1), x->string(game.game.hands[pickedPlayerId+1][x+1]))
+                    cardNumberPicked = radiox("peek what", 0:(length(game.game.hands[pickedPlayerId+1])), x->x == length(game.game.hands[pickedPlayerId+1]) ? "go back" : string(game.game.hands[pickedPlayerId+1][x+1]))
+                    cardNumberPicked == length(game.game.hands[pickedPlayerId+1]) && continue
                 end
                 game.game = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (pickedPlayerId=pickedPlayerId, cardNumberPicked=cardNumberPicked))
                 pickedPlayerId, cardNumberPicked, cardType = game.game.publicActionResolution["pickedPlayerId"], game.game.publicActionResolution["cardNumberPicked"], game.game.publicActionResolution["cardType"]
@@ -230,6 +249,10 @@ function gameLoop(game, playerId)
             p = game.game.players[game.game.whoseturn+1].name
             println("waiting for $p to $(game.game.nextExpectedAction)")
             wait(game.cond)
+            if game.game.publicActionResolution !== nothing
+                println(game.game.publicActionResolution)
+                entertocontinue()
+            end
         end
         if game.game.currentRound > currentRound && !game.game.finished
             newCurrentRound = game.game.currentRound

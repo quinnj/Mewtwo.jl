@@ -109,9 +109,11 @@ function resolvePick!(game, pick)
     elseif cardType == Model.WarpPoint
         game.nextExpectedAction = Model.WarpPointSteal
         game.whoseturn = pick.pickedPlayerId
+        game.currentRound = currentRound
     elseif cardType == Model.PeekingRedCard
         game.nextExpectedAction = Model.PubliclyPeek
         game.whoseturn = pick.pickedPlayerId
+        game.currentRound = currentRound
     elseif cardType == Model.Ghastly
         pickedPlayerHand = game.hands[pick.pickedPlayerId+1]
         append!(game.discard, splice!(pickedPlayerHand, 1:length(pickedPlayerHand)))
@@ -131,24 +133,30 @@ function resolvePick!(game, pick)
     elseif cardType == Model.RepeatBall
         game.whoseturn = pick.pickingPlayerId
     elseif cardType == Model.RescueStretcher
-        if !isempty(game.discard) && length(currentRoundPicks(game)) < game.numPlayers
+        if !isempty(game.discard)
             game.nextExpectedAction = Model.RescueDiscarded
             game.whoseturn = pick.pickedPlayerId
+            game.currentRound = currentRound
         end
     elseif cardType == Model.Switch
         pikaPickIndex = findlast(x -> x.cardType == Model.Pikachu, game.picks)
         if pikaPickIndex !== nothing
             pikaPick = game.picks[pikaPickIndex]
+            where = pikaPick.roundPicked == game.currentRound ? "this round" : "a past round"
             game.currentRound = currentRound
             # swap picks
             pikaPick.cardType, pick.cardType = pick.cardType, pikaPick.cardType
             push!(game.discard, Model.Card(pick.cardType, false))
             pop!(game.picks)
+            game.publicActionResolution = "switch was picked, a pika from $where is now in the discard"
+        else
+            game.publicActionResolution = "switch was picked before any pikas; B is so mad right now"
         end
     elseif cardType == Model.SuperScoopUp
         if game.currentRound > 1
             game.nextExpectedAction = Model.ScoopOldCard
             game.whoseturn = pick.pickedPlayerId
+            game.currentRound = currentRound
         end
     elseif cardType == Model.OldRodForFun
         nothing
@@ -159,19 +167,25 @@ function resolvePick!(game, pick)
     elseif cardType == Model.EnergySearch
         game.nextExpectedAction = Model.EnergySearchSomeone
         game.whoseturn = pick.pickedPlayerId
+        game.currentRound = currentRound
     elseif cardType == Model.MrMime
         nothing
     else
         error("can't resolvePick! for unknown cardType = $cardType")
     end
     if game.currentRound > currentRound
-        discarded = splice!(game.discard, 1:length(game.discard))
-        # deal out new hands
-        cards = append!(collect(Iterators.flatten(game.hands)), discarded)
-        foreach(x->setfield!(x, :sidewaysForNew, false), cards)
-        game.hands = [[pick!(cards) for i = 1:(6 - game.currentRound)] for i = 1:game.numPlayers]
-        fill!(game.hideOwnHand, false)
+        newRound!(game)
     end
+end
+
+function newRound!(game)
+    discarded = splice!(game.discard, 1:length(game.discard))
+    # deal out new hands
+    cards = append!(collect(Iterators.flatten(game.hands)), discarded)
+    foreach(x->setfield!(x, :sidewaysForNew, false), cards)
+    game.hands = [[pick!(cards) for i = 1:(6 - game.currentRound)] for i = 1:game.numPlayers]
+    fill!(game.hideOwnHand, false)
+    return
 end
 
 function takeAction(gameId, action, body)
@@ -179,6 +193,7 @@ function takeAction(gameId, action, body)
     game.nextExpectedAction === action || error("expected $(game.nextExpectedAction) to be taken; $action was attempted")
     game.lastAction = action
     game.privateActionResolution = nothing
+    game.publicActionResolution = nothing
     if action == Model.PickACard || action == Model.WooperJumpedOut
         if rand(1:50) == 1
             game.nextExpectedAction = Model.WooperJumpedOut
@@ -198,12 +213,22 @@ function takeAction(gameId, action, body)
         game.privateActionResolution = card.cardType
         game.nextExpectedAction = Model.PickACard
         checkOldRodDualBall!(game)
+        currentRound = game.currentRound
+        game.currentRound += game.numPlayers == game.picks[end].roundPickNumber
+        if game.currentRound > currentRound
+            newRound!(game)
+        end
     elseif action == Model.PubliclyPeek
         card = game.hands[body.pickedPlayerId+1][body.cardNumberPicked+1]
         card.sidewaysForNew = true
         game.publicActionResolution = (pickedPlayerId=body.pickedPlayerId, cardNumberPicked=body.cardNumberPicked, cardType=card.cardType)
         game.nextExpectedAction = Model.PickACard
         checkOldRodDualBall!(game)
+        currentRound = game.currentRound
+        game.currentRound += game.numPlayers == game.picks[end].roundPickNumber
+        if game.currentRound > currentRound
+            newRound!(game)
+        end
     elseif action == Model.EscapeACard
         lastPick = game.picks[end]
         hand = game.hands[lastPick.pickedPlayerId+1]
@@ -211,6 +236,11 @@ function takeAction(gameId, action, body)
         push!(game.discard, card)
         game.nextExpectedAction = Model.PickACard
         checkOldRodDualBall!(game)
+        currentRound = game.currentRound
+        game.currentRound += game.numPlayers == game.picks[end].roundPickNumber
+        if game.currentRound > currentRound
+            newRound!(game)
+        end
     elseif action == Model.RescueDiscarded
         card = game.discard[body.cardNumberPicked+1]
         rescueStretchPick = pop!(game.picks)
@@ -226,6 +256,11 @@ function takeAction(gameId, action, body)
         checkOldRodDualBall!(game)
         pop!(game.picks)
         game.nextExpectedAction = Model.PickACard
+        currentRound = game.currentRound
+        game.currentRound += game.numPlayers == game.picks[end].roundPickNumber
+        if game.currentRound > currentRound
+            newRound!(game)
+        end
     elseif action == Model.EnergySearchSomeone
         if game.numPlayers == 6
             game.privateActionResolution = (playerId=body.pickedPlayerId, role=game.roles[body.pickedPlayerId+1])
@@ -234,6 +269,11 @@ function takeAction(gameId, action, body)
         end
         game.nextExpectedAction = Model.PickACard
         checkOldRodDualBall!(game)
+        currentRound = game.currentRound
+        game.currentRound += game.numPlayers == game.picks[end].roundPickNumber
+        if game.currentRound > currentRound
+            newRound!(game)
+        end
     else
         error("unsupported action = $action")
     end
