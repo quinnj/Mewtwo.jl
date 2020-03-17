@@ -42,9 +42,11 @@ function play(name::String, loc=false)
                         break
                     else
                         println("enter a # >= 5")
+                        entertocontinue()
                     end
                 catch e
                     println("enter a # dummy or 'q' to go back")
+                    entertocontinue()
                 end
             end
         elseif ret == 3
@@ -112,7 +114,7 @@ current round picks: $(join(map(x -> x.cardType, filter(x -> x.roundPicked == ga
 
 function gameLoop(game, playerId)
     # wait for all players to arrive
-    sleep(1.0)
+    sleep(2.0)
     while game.game.nextExpectedAction == Model.WaitingPlayers
         println("waiting for others to arrive")
         wait(game.cond)
@@ -211,7 +213,7 @@ function gameLoop(game, playerId)
                 end
                 game.game = Client.takeAction(game.game.gameId, game.game.nextExpectedAction, (cardType=cardType,))
             elseif game.game.nextExpectedAction == Model.RescueDiscarded
-                discard = Client.getDiscard(game.game.gameId).discard
+                discard = Client.getDiscard(game.game.gameId)
                 if length(discard) == 1
                     println("$(discard[1]) is the only card in the discard to rescue")
                     entertocontinue()

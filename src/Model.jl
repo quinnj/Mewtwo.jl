@@ -30,13 +30,12 @@ const Energies = [FireEnergy, CrazyBernie, GrassEnergy, FairyEnergy, WaterEnergy
 const StartingForFive = [FireEnergy, CrazyBernie, GrassEnergy, FairyEnergy, WaterEnergy, MrMime, Pikachu, Pikachu, Pikachu, Pikachu, Pikachu, Mewtwo, WarpPoint, PeekingRedCard, Ghastly, EscapeRope, ReverseValley, RepeatBall, RescueStretcher, Switch, SuperScoopUp, OldRodForFun, DualBall, DetectivePikachu, EnergySearch]
 
 mutable struct Card
-    cardType::CardType
+    i::Int
     sidewaysForNew::Bool
     # cardImage
 end
-Card() = Card(GrassEnergy, false)
-StructTypes.StructType(::Type{Card}) = StructTypes.Mutable()
-StructTypes.excludes(::Type{Card}) = (:cardType,)
+Card() = Card(0, false)
+StructTypes.StructType(::Type{Card}) = StructTypes.Struct()
 Base.string(c::Card) = c.sidewaysForNew ? "Card(sidewaysForNew=true)" : "Card()"
 
 @enum Role Good Bad
@@ -77,16 +76,11 @@ mutable struct Pick
     roundPicked::Int
     roundPickNumber::Int
     cardType::CardType
+    i::Int
 end
-Pick() = Pick(0, 0, 0, 0, 0, FireEnergy)
-Pick(a, b, c) = Pick(a, b, c, 0, 0, FireEnergy)
+Pick() = Pick(0, 0, 0, 0, 0, FireEnergy, 0)
+Pick(a, b, c) = Pick(a, b, c, 0, 0, FireEnergy, 0)
 StructTypes.StructType(::Type{Pick}) = StructTypes.Mutable()
-
-struct Discard
-    discard::Vector{CardType}
-end
-
-StructTypes.StructType(::Type{Discard}) = StructTypes.Struct()
 
 mutable struct Game
     lock::ReentrantLock
@@ -105,6 +99,7 @@ mutable struct Game
     hands::Vector{Vector{Card}} # length == numPlayers
     hideOwnHand::Vector{Bool}
     # hidden fields
+    cardTypes::Vector{CardType}
     roles::Vector{Role} # length == numPlayers
     outRole::Role
     # temporary field (not persisted)
@@ -116,10 +111,10 @@ mutable struct Game
     whoWon::Role
 end
 
-Game() = Game(ReentrantLock(), 0, 0, Union{Nothing, Player}[], 0, WaitingPlayers, WaitingPlayers, 1, false, Pick[], Card[], Vector{Card}[], Bool[], Role[], Good, nothing, nothing, 0, Good)
+Game() = Game(ReentrantLock(), 0, 0, Union{Nothing, Player}[], 0, WaitingPlayers, WaitingPlayers, 1, false, Pick[], Card[], Vector{Card}[], Bool[], CardType[], Role[], Good, nothing, nothing, 0, Good)
 
 StructTypes.StructType(::Type{Game}) = StructTypes.Mutable()
-StructTypes.excludes(::Type{Game}) = (:lock, :roles, :outRole)
+StructTypes.excludes(::Type{Game}) = (:lock, :cardTypes, :roles, :outRole)
 
 function Base.copy(game::Game)
     g = Game()

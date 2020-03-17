@@ -93,7 +93,7 @@ end
 function getDiscard(gameId)
     resp = HTTP.get(string(SERVER[], "/mewtwo/game/$gameId/discard"))
     if resp.status == 200
-        return JSON3.read(resp.body, Model.Discard)
+        return JSON3.read(resp.body, Vector{Model.CardType})
     else
         return resp
     end
