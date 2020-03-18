@@ -144,17 +144,16 @@ function resolvePick!(game, pick)
         pikaPickIndex = findlast(x -> x.cardType == Model.Pikachu, game.picks)
         if pikaPickIndex !== nothing
             pikaPick = game.picks[pikaPickIndex]
+            push!(game.discard, Model.Card(pikaPick.i, false))
             if pikaPick.roundPicked == game.currentRound
                 where = "this round"
-                push!(game.discard, Model.Card(pikaPick.i, false))
             else
                 where = "a past round"
-                push!(game.cardTypes, Model.Pikachu)
-                push!(game.discard, Model.Card(length(game.cardTypes), false))
             end
             game.currentRound = currentRound
             # swap picks
             pikaPick.cardType = Model.Switch # replace pika pick w/ switch
+            pikaPick.i = pick.i
             pop!(game.picks)
             game.publicActionResolution = "switch was picked, a pika from $where is now in the discard"
         else
@@ -192,15 +191,9 @@ function newRound!(game)
         return
     end
     discarded = splice!(game.discard, 1:length(game.discard))
-    # remove round picks from available cards
-    lastRoundPicks = filter(x -> x.roundPicked == game.currentRound - 1, game.picks)
-    deleteat!(game.cardTypes, sort!(map(x -> x.i, lastRoundPicks)))
     # deal out new hands
     cards = append!(collect(Iterators.flatten(game.hands)), discarded)
-    for (i, card) in enumerate(cards)
-        card.sidewaysForNew = false
-        card.i = i
-    end
+    foreach(x -> setfield!(x, :sidewaysForNew, false), cards)
     game.hands = [[pick!(cards) for i = 1:(6 - game.currentRound)] for i = 1:game.numPlayers]
     fill!(game.hideOwnHand, false)
     return
@@ -265,17 +258,17 @@ function takeAction(gameId, action, body)
     elseif action == Model.RescueDiscarded
         card = splice!(game.discard, body.cardNumberPicked+1)
         rescueStretchPick = pop!(game.picks)
+        push!(game.discard, Model.Card(rescueStretchPick.i, false))
         rescueStretchPick.cardType = game.cardTypes[card.i]
         rescueStretchPick.i = card.i
-        push!(game.discard, Model.Card(findfirst(x->x == Model.RescueStretcher, game.cardTypes), false))
         resolvePick!(game, rescueStretchPick)
         checkOldRodDualBall!(game)
     elseif action == Model.ScoopOldCard
         scoopPick = pop!(game.picks)
         scoopedPick = game.picks[findfirst(x -> string(x.cardType) == body.cardType, game.picks)]
-        push!(game.cardTypes, scoopedPick.cardType)
-        insert!(game.hands[scoopPick.pickedPlayerId+1], scoopPick.cardNumberPicked+1, Model.Card(length(game.cardTypes), true))
+        insert!(game.hands[scoopPick.pickedPlayerId+1], scoopPick.cardNumberPicked+1, Model.Card(scoopedPick.i, true))
         scoopedPick.cardType = Model.SuperScoopUp
+        scoopedPick.i = scoopPick.i
         checkOldRodDualBall!(game)
         game.nextExpectedAction = Model.PickACard
         currentRound = game.currentRound
